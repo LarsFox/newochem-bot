@@ -2,11 +2,12 @@ package db
 
 // Article is a VK page or Zen page
 type Article struct {
-	ID         int    `json:"id"`
-	URL        string `json:"url"`
-	Title      string `json:"title"`
-	VKWallID   int    `json:"vk_wall_id"`
-	Categories []int  `json:"categories"`
+	ID          int    `json:"id"`
+	URL         string `json:"url"`
+	Title       string `json:"title"`
+	VKWallID    int    `json:"vk_wall_id"`
+	Categories  string `json:"categories"`
+	PublishedAt int    `json:"published_at"` // Unix time
 }
 
 // Category of an article
@@ -19,7 +20,7 @@ type Category struct {
 
 // Job is a single mention of a user in an article
 type Job struct {
-	ID        int    `json:"id"` // TODO: check if ID is not used when saving job with db.Save
+	ID        int    `json:"id"`
 	ArticleID int    `json:"article_id"`
 	UserID    int    `json:"user_id"`
 	Kind      string `json:"kind"`
@@ -35,8 +36,9 @@ type State struct {
 
 // StateInput is a struct of all possible inputs. Stored as string
 type StateInput struct {
-	Article *Article `json:"article"`
-	Jobs    []*Job   `json:"jobs"`
+	Article    *Article `json:"article"`
+	Jobs       []*Job   `json:"jobs"`
+	Categories []int    `json:"categories"`
 }
 
 // Worker is a translator, editor (or anyone else involved)

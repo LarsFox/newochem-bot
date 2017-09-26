@@ -11,7 +11,7 @@ import (
 	"strconv"
 )
 
-// Client works with Telegram Bot API.
+// Client works with Telegram Bot API
 type Client interface {
 	GetMessagesChan() (<-chan *Message, error)
 	SendAudio(chatID int, audio []byte) (*Response, error)
@@ -25,13 +25,12 @@ type client struct {
 	lastUpdID int
 }
 
-// NewClient returns a new client to work with Telegram Bot API.
+// NewClient returns a new client to work with Telegram Bot API
 func NewClient(token string) Client {
 	return &client{token: token}
 }
 
 // GetMessagesChan returns a message channel
-// TODO: errors
 func (c *client) GetMessagesChan() (<-chan *Message, error) {
 	msgChan := make(chan *Message)
 
@@ -77,7 +76,6 @@ func (c *client) makeGETRequest(uri string) (*Response, error) {
 	if err != nil {
 		return nil, err
 	}
-
 	return resp, nil
 }
 
@@ -90,7 +88,6 @@ func (c *client) makeTelegramRequest(methodName, fileKey, fileName string, file 
 		err = fmt.Errorf("Tg error %d", resp.ErrorCode)
 		return nil, err
 	}
-
 	return resp, nil
 }
 
@@ -117,14 +114,12 @@ func (c *client) makePOSTRequest(uri, fileKey, fileName string, file []byte,
 	for k, v := range fields {
 		w.WriteField(k, v)
 	}
-
 	w.Close()
 
 	req, err := http.NewRequest("POST", uri, &b)
 	if err != nil {
 		return nil, err
 	}
-
 	req.Header.Set("Content-Type", w.FormDataContentType())
 
 	client := &http.Client{}
@@ -140,11 +135,9 @@ func (c *client) makePOSTRequest(uri, fileKey, fileName string, file []byte,
 
 	result := &Response{}
 	err = json.Unmarshal(body, result)
-
 	if err != nil {
 		return nil, err
 	}
-
 	return result, nil
 }
 
@@ -164,7 +157,6 @@ func (c *client) SendMessage(chatID int, text, parse string,
 		if err != nil {
 			return nil, err
 		}
-
 		key = string(data)
 	}
 

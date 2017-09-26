@@ -5,6 +5,7 @@ import (
 
 	"github.com/larsfox/newochem-bot/db"
 	"github.com/larsfox/newochem-bot/tg"
+	"github.com/larsfox/newochem-bot/vk"
 )
 
 // Manager works with other packages
@@ -16,14 +17,16 @@ type manager struct {
 	dbClient db.Client
 	tgClient tg.Client
 	tgUsers  []string
+	vkClient vk.Client
 }
 
 // NewManager returns a new manager
-func NewManager(dbClient db.Client, tgClient tg.Client, tgUsers []string) Manager {
+func NewManager(dbClient db.Client, vkClient vk.Client, tgClient tg.Client, tgUsers []string) Manager {
 	return &manager{
 		dbClient: dbClient,
 		tgClient: tgClient,
 		tgUsers:  tgUsers,
+		vkClient: vkClient,
 	}
 }
 

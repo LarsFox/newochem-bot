@@ -18,6 +18,7 @@ type Client interface {
 	GetState(user string) (*State, *StateInput, error)
 	CreateState(user string) (*State, error)
 	SetState(s *State, input *StateInput) error
+	SaveArticle(input *StateInput) error
 }
 
 // Closes DB from main
@@ -37,7 +38,7 @@ func NewClient(dbString string) (Client, error) {
 
 func (c *client) GetCategories() ([]*Category, error) {
 	categories := []*Category{}
-	c.db.Where("active = 1").Find(&categories)
+	c.db.Find(&categories)
 	return categories, nil
 }
 
@@ -62,7 +63,6 @@ func (c *client) GetState(user string) (*State, *StateInput, error) {
 	return s, input, nil
 }
 
-// TODO: error
 func (c *client) CreateState(user string) (*State, error) {
 	s := &State{User: user, Input: "{}"}
 	c.db.Save(s)
@@ -76,5 +76,19 @@ func (c *client) SetState(s *State, input *StateInput) error {
 	}
 	s.Input = string(b)
 	c.db.Save(s)
+	return nil
+}
+
+func (c *client) SaveArticle(input *StateInput) error {
+	categories, err := json.Marshal(input.Categories)
+	if err != nil {
+		return err
+	}
+
+	input.Article.Categories = string(categories)
+	c.db.Save(input.Article)
+	for _, job := range input.Jobs {
+		c.db.Save(job)
+	}
 	return nil
 }

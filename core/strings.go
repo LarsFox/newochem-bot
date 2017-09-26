@@ -37,4 +37,5 @@ const (
 	replyCategoryJob = "Выбери категории"
 	replyNoCategory  = "Не могу найти эту категорию! Введи верную"
 	replyCategories  = "***Категории***"
+	replyDone        = "Готово! Статья добавлена. Что-нибудь еще?"
 )

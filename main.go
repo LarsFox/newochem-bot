@@ -10,6 +10,7 @@ import (
 	"github.com/larsfox/newochem-bot/core"
 	"github.com/larsfox/newochem-bot/db"
 	"github.com/larsfox/newochem-bot/tg"
+	"github.com/larsfox/newochem-bot/vk"
 )
 
 var (
@@ -20,8 +21,11 @@ var (
 	dbName = app.StringOpt("db-name", "", "Database name")
 	dbHost = app.StringOpt("db-host", "", "Database host")
 
-	tgToken = app.StringOpt("tg-token", "", "Telegram Bot Token")
+	tgToken = app.StringOpt("tg-token", "", "Telegram Bot token")
 	tgUsers = app.StringsOpt("tg-user", nil, "List of users who have access to bot")
+
+	vkToken   = app.StringOpt("vk-token", "", "VK API token")
+	vkVersion = app.StringOpt("vk-version", "", "VK API version")
 )
 
 func init() {
@@ -37,6 +41,7 @@ func main() {
 }
 
 func appAction() {
+	vkClient := vk.NewClient(*vkToken, *vkVersion)
 	tgClient := tg.NewClient(*tgToken)
 
 	var host string
@@ -54,6 +59,6 @@ func appAction() {
 	}
 	defer dbClient.CloseDB()
 
-	appManager := core.NewManager(dbClient, tgClient, *tgUsers)
+	appManager := core.NewManager(dbClient, vkClient, tgClient, *tgUsers)
 	appManager.Listen()
 }
