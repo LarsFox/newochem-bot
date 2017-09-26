@@ -10,6 +10,15 @@ import (
 	"github.com/larsfox/newochem-bot/tg"
 )
 
+const (
+	stateNothing = iota
+	stateGettingPosts
+	stateCheckingPost
+	stateTranslators
+	stateEditors
+	stateCategories
+)
+
 // handleMsg is the main function for handling messages
 func (m *manager) handleMsg(msg *tg.Message) {
 	if msg == nil {
@@ -52,12 +61,12 @@ func (m *manager) handleMsg(msg *tg.Message) {
 
 	switch state.State {
 	// Nothing
-	case 0:
+	case stateNothing:
 		switch msg.Text {
 		case strAddArticle, strAddArticleShort:
 			// TODO: get article from the wall
 			input.Article = &db.Article{}
-			state.State = 1
+			state.State = stateGettingPosts
 			m.defaultWorkers(msg, state, translator)
 
 		default:
@@ -65,23 +74,22 @@ func (m *manager) handleMsg(msg *tg.Message) {
 			return
 		}
 
+	// Getting wall posts
+	case stateGettingPosts:
+
+	// Checking if the gotten post is correct
+	case stateCheckingPost:
+
 	// Adding translators
-	case 1:
+	case stateTranslators:
 		switch msg.Text {
 		case strDone:
-			// Prevent empty list of translators
-			var found bool
-			for _, job := range input.Jobs {
-				if job.Kind == translator {
-					found = true
-				}
-			}
-
-			if !found {
+			if !checkJob(input, translator) {
 				m.tgClient.SendMessage(msg.Chat.ID, replyNoChosen, markdown, nil)
 				return
 			}
-			state.State = 2
+
+			state.State = stateEditors
 			m.defaultWorkers(msg, state, editor)
 			m.tgClient.SendMessage(msg.Chat.ID, replyNoChosen, markdown, nil)
 
@@ -90,24 +98,15 @@ func (m *manager) handleMsg(msg *tg.Message) {
 		}
 
 	// Adding editors
-	case 2:
+	case stateEditors:
 		switch msg.Text {
 		case strDone:
-			// Prevent empty list of editors
-			var found bool
-			for _, job := range input.Jobs {
-				if job.Kind == editor {
-					found = true
-					break
-				}
-			}
-
-			if !found {
+			if !checkJob(input, editor) {
 				m.tgClient.SendMessage(msg.Chat.ID, replyNoChosen, markdown, nil)
 				return
 			}
 
-			state.State = 3
+			state.State = stateCategories
 			categories, err := m.dbClient.GetCategories()
 			if err != nil {
 				m.SendError(msg.Chat.ID, err)
@@ -125,71 +124,14 @@ func (m *manager) handleMsg(msg *tg.Message) {
 		}
 
 	// Adding category
-	case 3:
+	case stateCategories:
 		switch msg.Text {
 		case strDone:
-			if len(input.Categories) == 0 {
-				m.tgClient.SendMessage(msg.Chat.ID, replyNoChosen, markdown, nil)
-				return
-			}
-
-			err := m.dbClient.SaveArticle(input)
-			if err != nil {
-				m.SendError(msg.Chat.ID, err)
-				return
-			}
-
-			state.State = 0
-			input = nil
-			m.tgClient.SendMessage(msg.Chat.ID, replyDone, markdown, defaultKeyboard)
+			state.State = stateNothing
+			m.saveArticle(msg, input)
 
 		default:
-			var category string
-			categories, err := m.dbClient.GetCategories()
-			if err != nil {
-				m.SendError(msg.Chat.ID, err)
-				return
-			}
-
-			if strings.HasPrefix(msg.Text, strAddPlus) || strings.HasPrefix(msg.Text, strAddMinus) {
-				category = strings.Join(strings.Split(msg.Text, " ")[1:], " ")
-			} else {
-				category = msg.Text
-			}
-
-			names := make([]string, len(categories))
-			buttons := make([]string, len(categories))
-			for i, cat := range categories {
-				names[i] = cat.Name
-				buttons[i] = strAddPlus + cat.Name
-			}
-
-			index := stringInArray(category, names)
-			if index == -1 {
-				m.tgClient.SendMessage(msg.Chat.ID, replyNoCategory, markdown, nil)
-				return
-			}
-
-			selected := make([]string, len(input.Categories))
-			for i, n := range input.Categories {
-				selected[i] = categories[n].Name
-			}
-
-			if stringInArray(category, selected) == -1 {
-				input.Categories = append(input.Categories, index)
-			} else {
-				input.Categories = append(input.Categories[:index], input.Categories[index+1:]...)
-			}
-
-			reply := replyCategories
-			for _, index := range input.Categories {
-				reply += "\n" + names[index]
-				buttons[index] = strAddMinus + names[index]
-			}
-
-			m.tgClient.SendMessage(msg.Chat.ID, reply,
-				markdown, createAddKeyboards(buttons, reply != replyCategories))
-			// m.addCategory
+			m.addCategories(msg, state, input)
 		}
 
 	default:
@@ -197,9 +139,6 @@ func (m *manager) handleMsg(msg *tg.Message) {
 	}
 
 	m.dbClient.SetState(state, input)
-
-	// Unknown, ask if abort all the having input
-	// return
 }
 
 func (m *manager) nothing(msg *tg.Message) {
@@ -214,6 +153,7 @@ func (m *manager) cancel(msg *tg.Message, state *db.State, input *db.StateInput)
 	m.tgClient.SendMessage(msg.Chat.ID, replyCancel, markdown, defaultKeyboard)
 }
 
+// Sends starting message and keyboard for both translators and editors
 func (m *manager) defaultWorkers(msg *tg.Message, state *db.State, jobKind string) {
 	workers, err := m.dbClient.GetWorkers()
 	if err != nil {
@@ -226,6 +166,7 @@ func (m *manager) defaultWorkers(msg *tg.Message, state *db.State, jobKind strin
 	m.tgClient.SendMessage(msg.Chat.ID, jobMessages[jobKind], markdown, createAddKeyboards(buttons, false))
 }
 
+// Adds both translators and editors based on input
 func (m *manager) addWorkers(msg *tg.Message, state *db.State, input *db.StateInput, jobKind string) {
 	selected := make([]int, len(input.Jobs))
 	for i, job := range input.Jobs {
@@ -292,4 +233,69 @@ func (m *manager) addWorkers(msg *tg.Message, state *db.State, input *db.StateIn
 
 	m.tgClient.SendMessage(msg.Chat.ID, reply,
 		markdown, createAddKeyboards(buttons, reply != jobReplies[jobKind]))
+}
+
+// Adds categories based on input
+func (m *manager) addCategories(msg *tg.Message, state *db.State, input *db.StateInput) {
+	var category string
+	categories, err := m.dbClient.GetCategories()
+	if err != nil {
+		m.SendError(msg.Chat.ID, err)
+		return
+	}
+
+	if strings.HasPrefix(msg.Text, strAddPlus) || strings.HasPrefix(msg.Text, strAddMinus) {
+		category = strings.Join(strings.Split(msg.Text, " ")[1:], " ")
+	} else {
+		category = msg.Text
+	}
+
+	names := make([]string, len(categories))
+	buttons := make([]string, len(categories))
+	for i, cat := range categories {
+		names[i] = cat.Name
+		buttons[i] = strAddPlus + cat.Name
+	}
+
+	index := stringInArray(category, names)
+	if index == -1 {
+		m.tgClient.SendMessage(msg.Chat.ID, replyNoCategory, markdown, nil)
+		return
+	}
+
+	selected := make([]string, len(input.Categories))
+	for i, n := range input.Categories {
+		selected[i] = categories[n].Name
+	}
+
+	if stringInArray(category, selected) == -1 {
+		input.Categories = append(input.Categories, index)
+	} else {
+		input.Categories = append(input.Categories[:index], input.Categories[index+1:]...)
+	}
+
+	reply := replyCategories
+	for _, index := range input.Categories {
+		reply += "\n" + names[index]
+		buttons[index] = strAddMinus + names[index]
+	}
+
+	m.tgClient.SendMessage(msg.Chat.ID, reply,
+		markdown, createAddKeyboards(buttons, reply != replyCategories))
+}
+
+func (m *manager) saveArticle(msg *tg.Message, input *db.StateInput) {
+	if len(input.Categories) == 0 {
+		m.tgClient.SendMessage(msg.Chat.ID, replyNoChosen, markdown, nil)
+		return
+	}
+
+	err := m.dbClient.SaveArticle(input)
+	if err != nil {
+		m.SendError(msg.Chat.ID, err)
+		return
+	}
+
+	input = nil
+	m.tgClient.SendMessage(msg.Chat.ID, replyDone, markdown, defaultKeyboard)
 }

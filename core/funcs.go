@@ -1,5 +1,9 @@
 package core
 
+import (
+	"github.com/larsfox/newochem-bot/db"
+)
+
 func stringInArray(s string, arr []string) int {
 	for i, item := range arr {
 		if s == item {
@@ -26,4 +30,14 @@ func chunksString(array []string, length int) [][]string {
 	}
 	result = append(result, array[i:])
 	return result
+}
+
+// Prevents saving empty list of workers
+func checkJob(input *db.StateInput, jobType string) bool {
+	for _, job := range input.Jobs {
+		if job.Kind == jobType {
+			return true
+		}
+	}
+	return false
 }
