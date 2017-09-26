@@ -1,0 +1,14 @@
+hash: ac3704f3c4f6f109ad85886d8ed05cb097ba7fa66a4a349e13b3f6cb79f4344e
+updated: 2017-09-22T00:42:23.806150305+03:00
+imports:
+- name: github.com/go-sql-driver/mysql
+  version: 7785c74297136c027fdf2fd6f8931c0e19be8aa7
+- name: github.com/jawher/mow.cli
+  version: a459d5906bb7a9c5eda7c4d02eec7c541120226e
+- name: github.com/jinzhu/gorm
+  version: 5174cc5c242a728b435ea2be8a2f7f998e15429b
+  subpackages:
+  - dialects/mysql
+- name: github.com/jinzhu/inflection
+  version: 1c35d901db3da928c72a72d8458480cc9ade058f
+testImports: []

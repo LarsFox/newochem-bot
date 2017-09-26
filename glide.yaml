@@ -1,0 +1,6 @@
+package: newochem-bot
+import:
+- package: github.com/jawher/mow.cli
+  version: v1.0.1
+- package: github.com/jinzhu/gorm
+  version: v1.0
